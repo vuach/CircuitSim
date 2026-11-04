@@ -1,4 +1,5 @@
 #include "circuit.h"
+#include "solver.h"
 #include <iostream>
 #include <cmath>
 
@@ -57,3 +58,61 @@ void Cprint(Circuit& circuit) {
     }
 }
 
+bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
+    int n = circuit.nodeCount;
+    if (n<=0 || circuit.capacity<1 || circuit.size<1 || circuit.components == nullptr || A.data!=nullptr || b != nullptr) return false;
+    A = Mcreate(n, n);
+    b = new double[n]{};
+    for (int i=0; i<n; i++) {
+        b[i]=0;
+    }
+    for (int i=0; i<circuit.size; i++) {
+        const Component& component = circuit.components[i];
+        int node1 = component.node1;
+        int node2 = component.node2;
+        if (node1<0 || node2<0 || node1>n || node2>n || !std::isfinite(component.value)) {
+            Mdelete(A);
+            delete[] b;
+            b = nullptr;
+            return false;
+        }
+        switch (component.type) {
+            case ComponentType::Resistor: {
+                if (component.value<=0) {
+                    Mdelete(A);
+                    delete[] b;
+                    b = nullptr;
+                    return false;
+                }
+                double g = 1 / component.value;
+                if (node1>0) {
+                    int r1 = node1-1;
+                    A.data[r1][r1]+=g;
+                }
+                if (node2>0) {
+                    int r2 = node2-1;
+                    A.data[r2][r2]+=g;
+                }
+                if (node1>0 && node2>0) {
+                    int r1 = node1-1;
+                    int r2 = node2-1;
+                    A.data[r1][r2]-=g;
+                    A.data[r2][r1]-=g;
+                }
+                break;
+            }
+            case ComponentType::CurrentSource: {
+                if (node1 > 0) b[node1 - 1] -= component.value;
+                if (node2 > 0) b[node2 - 1] += component.value;
+                break;
+            }
+            default: {
+                Mdelete(A);
+                delete[] b;
+                b = nullptr;
+                return false;
+            }
+        }
+    }
+    return true;
+}
