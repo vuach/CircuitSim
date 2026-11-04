@@ -1,4 +1,4 @@
-#include "Solver.h"
+#include "solver.h"
 #include <cmath>
 #include <algorithm>
 
@@ -19,7 +19,7 @@ bool GaussForw(Matrix& augmented) {
         Mswaprows(augmented, i, maxrow);
         for (int j=i+1; j<n; j++) {
             double k = augmented.data[j][i]/augmented.data[i][i];
-            for (int t=i; t<augmented.cols; t++) {
+            for (int t=i+1; t<augmented.cols; t++) {
                 augmented.data[j][t]=augmented.data[j][t]-k*augmented.data[i][t];
             }
             augmented.data[j][i]=0.0;
@@ -59,3 +59,16 @@ bool GaussSolve(const Matrix& M, const double* b, double* x) {
     Mdelete(augmented);
     return success;
 }
+
+double residual(const Matrix& M, const double* b, const double* x) {
+    double maxr = 0;
+    for (int i=0; i<M.rows; i++) {
+        double semisum = 0;
+        for (int j=0; j<M.cols; j++) {
+            semisum = semisum + M.data[i][j]*x[j];
+        }
+        maxr = std::max(maxr, std::abs(semisum-b[i]));
+    }
+    return maxr;
+}
+
