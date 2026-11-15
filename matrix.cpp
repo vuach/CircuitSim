@@ -38,8 +38,7 @@ void Mswaprows(Matrix& M, int swap1, int swap2) {
 
 void Mprint(const Matrix& M, bool augmented) {
     for (int i=0; i<M.rows; i++) {
-        int j = 0;
-        for (j; j<M.cols; j++) {
+        for (int j=0; j<M.cols; j++) {
             if (augmented && j == M.cols-1) std::cout << "| ";
             std::cout << M.data[i][j] << " ";
         }

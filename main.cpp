@@ -45,8 +45,25 @@ int main() {
     Cadd(circuit, {ComponentType::Resistor, 2, 0, 2000.0});
     Cadd(circuit, {ComponentType::CurrentSource, 0, 1, 0.003});
     Cprint(circuit);
-
-    Matrix A{};
+    DCResult result{};
+    bool made = analyzeDC(circuit, result);
+    if (made==false) std::cout << "compute failed\n";
+    else {
+        for (int i=0; i<result.solutionSize; i++) {
+            std::cout << result.solution[i] << " ";
+        }
+        std::cout << std::endl;
+        for (int i=0; i<result.componentCount; i++) {
+            std::cout << "I = " << result.components[i].current
+          << " A, U = " << result.components[i].voltage
+          << " V, P = " << result.components[i].power
+          << " W\n";
+        }
+        std::cout << std::endl << result.residual << std::endl;
+    }
+    deleteDCResult(result);
+    Cdelete(circuit);
+    /*Matrix A{};
     double* b = nullptr;
     if (!buildDC(circuit, A, b)) {
         std::cout << "buildDC failed\n";
@@ -69,6 +86,6 @@ int main() {
     delete[] x;
     delete[] b;
     Mdelete(A);
-    Cdelete(circuit);
+    Cdelete(circuit);*/
     return 0;
 }

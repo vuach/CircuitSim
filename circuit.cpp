@@ -213,6 +213,7 @@ void deleteDCResult(DCResult& result) {
     delete[] result.components;
     delete[] result.solution;
     result.components=nullptr;
+    result.solution = nullptr;
     result.componentCount=0;
     result.solutionSize=0;
     result.residual=0;

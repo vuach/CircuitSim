@@ -40,3 +40,8 @@ void Cdelete(Circuit& circuit);
 bool Cadd(Circuit& circuit, const Component& component);
 void Cprint(Circuit& circuit);
 bool buildDC(const Circuit& circuit, Matrix& A, double*& b);
+bool calcComponent(const Component& component, 
+    const double* solution, int nodeCount, int voltageSrcIndex, double& voltage,
+    double& current, double& power);
+bool analyzeDC(const Circuit& circuit, DCResult& result);
+void deleteDCResult(DCResult& result);
