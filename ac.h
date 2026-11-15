@@ -1,6 +1,7 @@
+#pragma once
+#include <complex>
 #include "circuit.h"
 #include "complexmatrix.h"
-#pragma once
 
 struct ACComponentResult {
     std::complex<double> voltage;
@@ -19,10 +20,8 @@ struct ACResult {
 
 bool buildAC(const Circuit& circuit, double frequency, ComplexMatrix& A, std::complex<double>*& b);
 bool calcACComponent(
-    const Component& component,
-    const std::complex<double>* solution,
+    const Component& component, const std::complex<double>* solution,
     int nodeCount, int voltageSrcIndex, double frequency,
-    std::complex<double>& voltage,
-    std::complex<double>& current,
-    std::complex<double>& power
-);
+    std::complex<double>& voltage, std::complex<double>& current, std::complex<double>& power);
+bool analyzeAC(const Circuit& circuit, double frequency, ACResult& result);
+void deleteACResult(ACResult& result);

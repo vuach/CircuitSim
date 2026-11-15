@@ -186,4 +186,5 @@ void deleteACResult(ACResult& result) {
     result.componentCount=0;
     result.solutionSize=0;
     result.residual=0;
+    result.frequency=0;
 }

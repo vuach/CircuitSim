@@ -4,7 +4,9 @@
 enum class ComponentType {
     Resistor,
     CurrentSource,
-    VoltageSource
+    VoltageSource,
+    Capacitor,
+    Inductor
 };
 
 struct Component {

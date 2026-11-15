@@ -2,7 +2,7 @@
 #include "solver.h"
 #include "circuit.h"
 #include <iostream>
-
+#include "ac.h"
 /*int main() {
 
     int cols;
@@ -40,7 +40,35 @@
 }
 */
 int main() {
-    Circuit circuit = Ccreate(2);
+    Circuit circuit = Ccreate(3);
+    Cadd(circuit, {ComponentType::VoltageSource, 1, 0, 5.0});
+    Cadd(circuit, {ComponentType::Resistor, 1, 2, 1000.0});
+    Cadd(circuit, {ComponentType::Capacitor, 2, 0, 1e-6});
+
+    ACResult result{};
+
+    if (analyzeAC(circuit, 1000.0, result)) {
+        for (int i = 0; i < result.solutionSize; i++) {
+            std::cout << "x[" << i << "] = "
+                    << result.solution[i] << "\n";
+        }
+
+        for (int i = 0; i < result.componentCount; i++) {
+            std::cout << "Component " << i
+                    << ": U = " << result.components[i].voltage
+                    << ", I = " << result.components[i].current
+                    << ", S = " << result.components[i].power
+                    << "\n";
+        }
+
+        std::cout << "Residual = " << result.residual << "\n";
+    } else {
+        std::cout << "AC analysis failed\n";
+    }
+
+    deleteACResult(result);
+    Cdelete(circuit);
+    /*Circuit circuit = Ccreate(2);
     Cadd(circuit, {ComponentType::Resistor, 1, 2, 1000.0});
     Cadd(circuit, {ComponentType::Resistor, 2, 0, 2000.0});
     Cadd(circuit, {ComponentType::CurrentSource, 0, 1, 0.003});
@@ -63,7 +91,8 @@ int main() {
     }
     deleteDCResult(result);
     Cdelete(circuit);
-    /*Matrix A{};
+    ///////////////////////////////////
+    Matrix A{};
     double* b = nullptr;
     if (!buildDC(circuit, A, b)) {
         std::cout << "buildDC failed\n";
@@ -89,3 +118,4 @@ int main() {
     Cdelete(circuit);*/
     return 0;
 }
+
