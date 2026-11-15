@@ -62,12 +62,13 @@ void Cprint(Circuit& circuit) {
 
 bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
     int n = circuit.nodeCount;
+    int Vsrccount = 0;
+    int Vsrcindex = 0;
     if (n<=0 || circuit.capacity<1 || circuit.size<1 || circuit.components == nullptr || A.data!=nullptr || b != nullptr) return false;
-    A = Mcreate(n, n);
-    b = new double[n]{};
-    for (int i=0; i<n; i++) {
-        b[i]=0;
-    }
+    for (int i=0; i<circuit.size; i++) if (circuit.components[i].type == ComponentType::VoltageSource) Vsrccount+=1;
+    int N=n+Vsrccount;
+    A = Mcreate(N, N);
+    b = new double[N]{};
     for (int i=0; i<circuit.size; i++) {
         const Component& component = circuit.components[i];
         int node1 = component.node1;
@@ -108,6 +109,20 @@ bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
                 if (node2 > 0) b[node2 - 1] += component.value;
                 break;
             }
+            case ComponentType::VoltageSource: {
+                int k=n+Vsrcindex;
+                if(node1>0){
+                    A.data[node1-1][k]+=1;
+                    A.data[k][node1-1]+=1;
+                }
+                if (node2>0){
+                    A.data[node2-1][k]-=1;
+                    A.data[k][node2-1]-=1;
+                }
+                b[k] = component.value;
+                Vsrcindex++;
+                break;
+            }
             default: {
                 Mdelete(A);
                 delete[] b;
@@ -121,13 +136,14 @@ bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
 
 
 bool calcComponent(const Component& component, 
-    const double* nodeV, int nodeCount, double& voltage,
+    const double* solution, int nodeCount, int voltageSrcIndex, double& voltage,
     double& current, double& power) {
-    if (component.node1>nodeCount || component.node1<0 || component.node2>nodeCount || component.node2<0 || nodeV==nullptr) return false;
+    if (component.node1>nodeCount || component.node1<0 || component.node2>nodeCount || component.node2<0 || solution==nullptr || voltageSrcIndex<0) return false;
+    int k=0;
     double V1=0;
     double V2=0;
-    if (component.node1!=0) V1=nodeV[component.node1-1];
-    if (component.node2!=0) V2=nodeV[component.node2-1];
+    if (component.node1!=0) V1=solution[component.node1-1];
+    if (component.node2!=0) V2=solution[component.node2-1];
     voltage = V1-V2;
     switch (component.type){
     case ComponentType::Resistor: {
@@ -138,10 +154,66 @@ bool calcComponent(const Component& component,
         current = component.value;
         break;
     }
+    case ComponentType::VoltageSource: {
+        k = nodeCount+voltageSrcIndex;
+        current = solution[k];
+        break;
+    }
     default: {
         return false;
     }
     }
     power = current*voltage;
     return true;
+}
+
+bool analyzeDC(const Circuit& circuit, DCResult& result) {
+    int componentCount = circuit.size;
+    Matrix A{};
+    double* b = nullptr;
+    bool build = buildDC(circuit, A, b);
+    if (build==false){
+        Mdelete(A);
+        delete[] b;
+        return false;
+    }
+    result.solution = new double[A.rows]{};
+    result.solutionSize = A.rows;
+    bool Solved = GaussSolve(A, b, result.solution);
+    if (Solved==false){
+        Mdelete(A);
+        delete[] b;
+        deleteDCResult(result);
+        return false;
+    }
+    double Residual = residual(A, b, result.solution);
+    result.residual = Residual;
+    int voltageSrcIndex = 0;
+    result.components = new ComponentResult[componentCount]{};
+    result.componentCount = circuit.size;
+    for (int i=0; i<componentCount; i++) {
+        const Component& curr = circuit.components[i];
+        bool Calculated = calcComponent(curr, result.solution, circuit.nodeCount, voltageSrcIndex, result.components[i].voltage, result.components[i].current, result.components[i].power); 
+        if (curr.type==ComponentType::VoltageSource) {
+            voltageSrcIndex+=1;
+        }
+        if (Calculated==false) {
+            Mdelete(A);
+            delete[] b;
+            deleteDCResult(result);
+            return false;
+        }
+    }
+    Mdelete(A);
+    delete[] b;
+    return true;
+}
+
+void deleteDCResult(DCResult& result) {
+    delete[] result.components;
+    delete[] result.solution;
+    result.components=nullptr;
+    result.componentCount=0;
+    result.solutionSize=0;
+    result.residual=0;
 }

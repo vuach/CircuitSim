@@ -3,7 +3,8 @@
 
 enum class ComponentType {
     Resistor,
-    CurrentSource
+    CurrentSource,
+    VoltageSource
 };
 
 struct Component {
@@ -20,6 +21,19 @@ struct Circuit {
     int nodeCount;
 };
 
+struct ComponentResult {
+    double voltage;
+    double current;
+    double power;
+};
+
+struct DCResult {
+    double* solution;
+    int solutionSize;
+    ComponentResult* components;
+    int componentCount;
+    double residual;
+};
 
 Circuit Ccreate(int initialCapacity);
 void Cdelete(Circuit& circuit);
