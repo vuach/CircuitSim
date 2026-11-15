@@ -2,6 +2,7 @@
 #include "solver.h"
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 Circuit Ccreate(int initcap) {
     Circuit C;
@@ -55,6 +56,7 @@ void Cprint(Circuit& circuit) {
                 std::cout << "Unknown component";
                 break;
         }
+        std::cout << std::endl;
     }
 }
 
@@ -114,5 +116,32 @@ bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
             }
         }
     }
+    return true;
+}
+
+
+bool calcComponent(const Component& component, 
+    const double* nodeV, int nodeCount, double& voltage,
+    double& current, double& power) {
+    if (component.node1>nodeCount || component.node1<0 || component.node2>nodeCount || component.node2<0 || nodeV==nullptr) return false;
+    double V1=0;
+    double V2=0;
+    if (component.node1!=0) V1=nodeV[component.node1-1];
+    if (component.node2!=0) V2=nodeV[component.node2-1];
+    voltage = V1-V2;
+    switch (component.type){
+    case ComponentType::Resistor: {
+        current = voltage/component.value;
+        break;
+    }
+    case ComponentType::CurrentSource: {
+        current = component.value;
+        break;
+    }
+    default: {
+        return false;
+    }
+    }
+    power = current*voltage;
     return true;
 }
