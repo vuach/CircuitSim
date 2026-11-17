@@ -42,6 +42,11 @@ bool Cadd(Circuit& circuit, const Component& component) {
     return true;
 }
 
+bool CaddDecouplingCapacitor(Circuit& circuit, int supplyNode, int groundNode, double capacitance) {
+    if(supplyNode<=0||groundNode<0||groundNode==supplyNode||!std::isfinite(capacitance)||capacitance<=0) return false;
+    return Cadd(circuit,{ComponentType::Capacitor,supplyNode,groundNode,capacitance});
+}
+
 void Cprint(Circuit& circuit) {
     std::cout << "Components: " << std::endl;
     for (int i=0; i<circuit.size; i++) {
@@ -65,7 +70,7 @@ bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
     int Vsrccount = 0;
     int Vsrcindex = 0;
     if (n<=0 || circuit.capacity<1 || circuit.size<1 || circuit.components == nullptr || A.data!=nullptr || b != nullptr) return false;
-    for (int i=0; i<circuit.size; i++) if (circuit.components[i].type == ComponentType::VoltageSource) Vsrccount+=1;
+    for (int i=0; i<circuit.size; i++) if (circuit.components[i].type == ComponentType::VoltageSource || circuit.components[i].type == ComponentType::Inductor) Vsrccount+=1;
     int N=n+Vsrccount;
     A = Mcreate(N, N);
     b = new double[N]{};
@@ -109,7 +114,11 @@ bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
                 if (node2 > 0) b[node2 - 1] += component.value;
                 break;
             }
-            case ComponentType::VoltageSource: {
+            case ComponentType::VoltageSource:
+            case ComponentType::Inductor: {
+                if(component.type==ComponentType::Inductor&&component.value<=0) {
+                    Mdelete(A); delete[] b; b=nullptr; return false;
+                }
                 int k=n+Vsrcindex;
                 if(node1>0){
                     A.data[node1-1][k]+=1;
@@ -119,8 +128,13 @@ bool buildDC(const Circuit& circuit, Matrix& A, double*& b) {
                     A.data[node2-1][k]-=1;
                     A.data[k][node2-1]-=1;
                 }
-                b[k] = component.value;
+                b[k] = component.type==ComponentType::VoltageSource?component.value:0.0;
                 Vsrcindex++;
+                break;
+            }
+            case ComponentType::Capacitor: {
+                if(component.value<=0) { Mdelete(A); delete[] b; b=nullptr; return false; }
+                // Open circuit at DC steady state: no matrix stamp.
                 break;
             }
             default: {
@@ -159,6 +173,15 @@ bool calcComponent(const Component& component,
         current = solution[k];
         break;
     }
+    case ComponentType::Inductor: {
+        k = nodeCount+voltageSrcIndex;
+        current = solution[k];
+        break;
+    }
+    case ComponentType::Capacitor: {
+        current = 0.0;
+        break;
+    }
     default: {
         return false;
     }
@@ -194,7 +217,7 @@ bool analyzeDC(const Circuit& circuit, DCResult& result) {
     for (int i=0; i<componentCount; i++) {
         const Component& curr = circuit.components[i];
         bool Calculated = calcComponent(curr, result.solution, circuit.nodeCount, voltageSrcIndex, result.components[i].voltage, result.components[i].current, result.components[i].power); 
-        if (curr.type==ComponentType::VoltageSource) {
+        if (curr.type==ComponentType::VoltageSource||curr.type==ComponentType::Inductor) {
             voltageSrcIndex+=1;
         }
         if (Calculated==false) {
